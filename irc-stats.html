@@ -1,0 +1,423 @@
+<link rel="import" href="http://cdn.thecact.us/bower_components/polymer/polymer.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-ajax/core-ajax.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-icon-button/core-icon-button.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-toolbar/core-toolbar.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-header-panel/core-header-panel.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-icons/core-icons.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-tooltip/core-tooltip.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-pages/core-pages.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-animated-pages/core-animated-pages.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/core-animated-pages/transitions/cross-fade.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/paper-tabs/paper-tab.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/paper-shadow/paper-shadow.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/paper-ripple/paper-ripple.html">
+<link rel="import" href="http://cdn.thecact.us/bower_components/paper-icon-button/paper-icon-button.html">
+<script src="http://cdn.thecact.us/bower_components/moment/min/moment.min.js"></script>
+<script src="http://cdn.thecact.us/bower_components/moment-timezone/builds/moment-timezone.min.js"></script>
+
+<polymer-element name="irc-stats" attributes="JSONURI IRCchannel">
+
+  <template>
+    <style>    
+      :host {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+        background-color: #aaaaaa;
+      }
+      core-toolbar {
+        color: rgb(255, 255, 255);
+        background-color: rgb(48, 153, 48);
+      }
+      #title {
+        font-size: 22pt;
+        font-weight: 900;
+      }
+      #paperTabs {
+        color: rgb(255, 255, 255);
+        font-size: 11pt;
+        font-weight: 300;
+        font-style: italic;
+        background-color: rgb(105, 186, 105);
+      }
+      #paperTabs paper-tab.core-selected {
+        font-style: normal;
+        font-size: 14pt;
+        color: rgb(255, 255, 134);
+      }
+      #paperTabs paper-tab core-icon {
+        width: 16px;
+        height: 16px;
+      }
+      #paperTabs paper-tab.core-selected core-icon {
+        width: 24px;
+        height: 24px;
+      }
+      paper-icon-button.bigIcon::shadow core-icon {
+        width: 40px;
+        height: 40px;
+      }
+      .card {
+        margin: 20px;
+        padding: 10px;
+        background-color: #FFFFFF;
+        max-width: 100%;
+        word-wrap: break-word;
+        word-break: break-word;
+        height: 100%;
+      }
+      core-icon.online, core-icon.offline {
+        height: 32px;
+        width: 32px;
+        margin: 0px 5px;
+      }
+      core-icon.online {
+        fill: rgb(0,180,0);        
+      }      
+      core-icon.offline {
+        fill: rgb(150,150,150);
+      }
+      core-icon.time {
+        margin: 0px 5px;
+      }
+      .link a:link{
+        padding: 0px;
+        color: rgb(48,153,48);
+        text-decoration: none;
+      }
+      .link a:visited {
+        color: rgb(169,169,169);
+      }
+      .link a:hover {
+        color: rgb(105,186,105);
+      }
+      .link a:active {
+        color: rgb(255, 255, 134);
+      }      
+      .link img {
+        max-width: 100%;
+        margin: 0px 0px 10px 0px;
+      }
+      .link {
+        max-width: 250px;
+        width: 100%;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      paper-ripple {
+        color: rgb(105,186,105);
+      }
+      core-toolbar {
+        height: 100px;
+      }
+      .joined {
+        color: rgb(0,180,0);
+      }
+      .quit, .parted, .killed, .kicked {
+        color: rgb(180,0,0);
+      }
+      .nick {
+        color: rgb(0,0,180);
+      }
+      .joinedbg {
+        background-color: rgb(235,255,235);
+      }
+      .quitbg, .partedbg, .killedbg, .kickedbg {
+        background-color: rgb(255,235,235);
+      }
+      .nickbg {
+        background-color: rgb(235,235,255);
+      }
+      .hMargins {
+        margin: 0px 5px;
+      }
+      .description {
+        padding: 10px;
+        background-color: rgb(245,245,245);
+      }
+      .title {
+        text-align: center;
+      }
+    </style>
+    <core-ajax id="ajaxUsers" url="{{JSONURI}}users/" handleas="json" auto on-core-response="{{handleAjaxUsers}}" method="GET" hidden></core-ajax>
+    <core-ajax id="ajaxLinks" url="{{JSONURI}}links/" handleas="json" auto on-core-response="{{handleAjaxLinks}}" method="GET" hidden></core-ajax>
+    <core-ajax id="ajaxActivity" url="{{JSONURI}}activity/" handleas="json" auto on-core-response="{{handleAjaxActivity}}" method="GET" hidden></core-ajax>
+    <core-ajax id="ajaxTubes" url="{{JSONURI}}tubes/" handleas="json" auto on-core-response="{{handleAjaxTubes}}" method="GET" hidden></core-ajax>
+    <div layout vertical fit>
+      <core-toolbar justify="center">
+        <span id="title" flex>IRC Stats: {{IRCchannel}}</span>
+        <paper-icon-button icon="refresh" class="bigIcon" on-tap="{{updateData}}"></paper-icon-button>
+        <div class="bottom fit">
+          <paper-tabs id="paperTabs" selected="0" selectedindex="0">
+            <paper-tab active><core-icon icon="account-circle"></core-icon>&nbspUsers&nbsp</paper-tab>
+            <paper-tab><core-icon icon="bookmark-outline"></core-icon>&nbspLinks&nbsp</paper-tab>
+            <paper-tab><core-icon icon="swap-horiz"></core-icon>&nbspActivity&nbsp</paper-tab>
+            <paper-tab><core-icon icon="theaters"></core-icon>&nbspTubes&nbsp</paper-tab>
+          </paper-tabs>
+          <paper-shadow></paper-shadow>
+        </div>
+      </core-toolbar>
+      <div flex layout vertical>
+        <core-animated-pages flex selected="{{$.paperTabs.selected}}" transitions="cross-fade">
+          <section flex layout vertical>
+            <core-header-panel mode="seamed" cross-fade flex>
+              <div flex layout horizontal wrap center-justified>
+                <template repeat="{{user in data.users  | isOnline('online')}}">
+                  <div class="card">
+                    <div flex layout horizontal center center-justified>
+                      <core-tooltip position="top" label="{{user.online ? 'online' : 'offline'}}">
+                        <core-icon icon="account-circle" class="{{user.online ? 'online' : 'offline'}}"></core-icon>
+                      </core-tooltip>
+                    	<h1>{{user.user}}</h1>
+                    </div>
+                    <div flex layout horizontal justified>
+                      <div class="hMargins"><b>Posts:</b> {{user.posts}}</div>
+                      <div class="hMargins"><b>Links:</b> {{user.links}}</div>
+                    </div><br>
+                    <div flex layout horizontal center-justified><b> Last Login:</b><em> {{user.lastLogin | momentTZ}}</em></div>
+                    <paper-shadow></paper-shadow>
+                  </div>
+                </template>
+              </div>              
+            </core-header-panel>
+          </section>
+          <section flex layout vertical>
+            <core-header-panel mode="seamed" cross-fade flex>
+              <div flex layout horizontal wrap center-justified>
+                <template repeat="{{link in data.links}}">
+                  <div class="card">
+                    <template if="{{!isImage(link.url)}}">
+                      <div relative flex layout vertical center center-justified class="link">
+                        <a relative href="{{link.url}}" target="_blank">
+                          <template if="{{link.og.title}}">
+                            <h1 class="title">{{link.og.title}}</h1>
+                          </template>
+                          <template if="{{!link.og.title}}">
+                            <h1 class="title">{{link.url}}</h1>
+                          </template>
+                          <paper-ripple fit></paper-ripple>  
+                        </a>                          
+                        <template if="{{link.og.image}}">
+                          <img src="{{link.og.image}}" onError="this.onerror=null;this.src='http://placehold.it/200/69ba69/69ff69/&text=Oops!%20:(';">
+                        </template>
+                        <template if="{{link.og.description}}">
+                          <div class="description">{{link.og.description}}</div>
+                        </template>
+                      </div>
+                      <!--<div relative flex layout horizontal center center-justified class="link">
+                        <core-icon icon="bookmark-outline"></core-icon>
+                        <a href="{{link.url}}" target="_blank">
+                          <h1>{{link.url}}</h1>
+                          <paper-ripple fit></paper-ripple>
+                        </a>
+                      </div>-->
+                    </template>
+                    <template if="{{isImage(link.url)}}">
+                      <div relative flex layout vertical center center-justified class="link">
+                        <a relative href="{{link.url}}" target="_blank">
+                         <h1 class="title">{{link.url}}</h1>
+                         <paper-ripple fit></paper-ripple>
+                        </a>
+                        <img src="{{link.url}}" onError="this.onerror=null;this.src='http://placehold.it/200/69ba69/69ff69/&text=Oops!%20:(';">
+                      </div>
+                    </template>
+                    <div flex layout horizontal center-justified center>
+                      <div><b>Linked by:</b> {{link.user}} </div>
+                      <core-tooltip position="left" label="{{link.time | momentTZ}}">
+                        <core-icon icon="schedule" class="time"></core-icon>
+                      </core-tooltip>
+                    </div>
+                    <paper-shadow></paper-shadow>
+                  </div>
+                </template>
+              </div>   
+            </core-header-panel>
+          </section>
+          <section flex layout vertical>
+            <core-header-panel mode="seamed" cross-fade flex>
+              <div flex>
+                <template repeat="{{act in data.activity}}">
+                  <div class="card {{act.event}}bg">
+                    <div flex layout horizontal center>
+                      <template if="{{((act.event == 'nick') || (act.event == 'quit') || (act.event == 'kicked') || (act.event == 'killed') || (act.event == 'parted'))}}">
+                        <core-icon class="{{act.event}}" icon="arrow-back"></core-icon>
+                      </template>
+                      <div flex></div>
+                      <template if="{{act.event == 'nick'}}">
+                        <div><b>{{act.oldnick}}</b> <b class="{{act.event}}">changed nick</b> to <b>{{act.newnick}}</b> <em>({{act.time | momentTZ}})</em></div>
+                      </template>
+                      <template if="{{act.event == 'joined'}}">
+                        <div><b>{{act.user}}</b> <b class="{{act.event}}">{{act.event}}</b> <em>({{act.time | momentTZ}})</em>.</div>
+                      </template>
+                      <template if="{{((act.event == 'quit') || (act.event == 'parted'))}}">
+                        <div><b>{{act.user}}</b> <b class="{{act.event}}">{{act.event}}</b> ({{act.reason == null ? 'no reason' : act.reason}}) <em>({{act.time | momentTZ}})</em></div>
+                      </template>
+                      <template if="{{((act.event == 'kicked') || (act.event == 'killed'))}}">
+                        <div><b>{{act.user}}</b> was <b class="{{act.event}}">{{act.event}}</b> ({{act.reason == null ? 'no reason' : act.reason}}) by <b>{{act.event == 'kicked' ? act.by : 'server'}}</b> <em>({{act.time | momentTZ}})</em></div>
+                      </template>
+                      <div flex></div>
+                      <template if="{{((act.event == 'nick') || (act.event == 'joined'))}}">
+                        <core-icon class="{{act.event}}" icon="arrow-forward"></core-icon>
+                      </template>
+                    </div>
+                    <paper-shadow></paper-shadow>
+                  </div>
+                </template>
+              </div>   
+            </core-header-panel>
+          </section>
+          </section>
+          <section flex layout vertical>
+            <core-header-panel mode="seamed" cross-fade flex>
+              <div flex layout horizontal wrap center-justified>
+                <template repeat="{{link in data.tubes}}">
+                  <div class="card">
+                    <div flex layout horizontal center-justified>
+                      <iframe width="420" height="315" src="//www.youtube.com/embed/{{link.id}}" frameborder="0" allowfullscreen></iframe>
+                    </div>
+                    <div flex layout horizontal center-justified>
+                      <div><b>Linked by:</b> {{link.user}}</div>
+                    </div><br>
+                    <div flex layout horizontal center-justified><em>{{link.time | momentTZ}}</em></div>
+                    <paper-shadow></paper-shadow>
+                  </div>
+                </template>
+              </div>
+            </core-header-panel>
+          </section>
+        </core-animated-pages>
+      </div>
+    </div>
+  </template>
+
+  <script>
+
+    Polymer('irc-stats', {
+      created: function() {
+        //data that's been validated, bound to element
+        this.data = { users : [], links : [], activity : [], tubes : []
+        };
+
+        //data received, pre-validation
+        this.dataPre = { users : [], links : [], activity : [], tubes : []
+        };
+
+       //load moment timezone data
+       moment.tz.add('America/Chicago|CST CDT EST CWT CPT|60 50 50 50 50|01010101010101010101010101010101010102010101010103401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010|-261s0 1nX0 11B0 1nX0 1wp0 TX0 WN0 1qL0 1cN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 11B0 1Hz0 14p0 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 RB0 8x30 iw0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 s10 1Vz0 LB0 1BX0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0');
+      },
+      
+      observe: {
+        'dataPre.users': 'validateUsers',
+        'dataPre.links': 'validateLinks',
+        'dataPre.activity': 'validateActivity',
+        'dataPre.tubes': 'validateTubes',
+      },
+
+      JSONURI: 'missingURI',
+
+      IRCchannel: '#ircchannel',
+
+      //validate new data, and update bound data if changed
+      validate: function(oldData, newData, arrayName) {
+        if(newData !== null) {
+          if(JSON.stringify(newData) !== JSON.stringify(this.data)) {
+            this.data[arrayName] = this.dataPre[arrayName];
+          }
+        }
+        else {console.log("data was null");}
+      },
+      
+      validateUsers: function(oldData, newData) {
+        this.validate(oldData, newData, 'users');
+      },
+
+      validateLinks: function(oldData, newData) {
+        this.validate(oldData, newData, 'links');
+      },
+
+      validateActivity: function(oldData, newData) {
+        this.validate(oldData, newData, 'activity');
+      },
+
+      validateTubes: function(oldData, newData) {
+        this.validate(oldData, newData, 'tubes');
+      },
+      
+      handleAjaxUsers: function(response) {
+        this.dataPre.users = response.detail.response;
+      },
+
+      handleAjaxLinks: function(response) {
+        this.dataPre.links = response.detail.response;
+      },
+      
+      handleAjaxActivity: function(response) {
+        this.dataPre.activity = response.detail.response;
+      },
+
+      handleAjaxTubes: function(response) {
+        this.dataPre.tubes = response.detail.response;
+      },
+
+      updateData: function() {
+        this.$.ajaxUsers.go();
+        this.$.ajaxLinks.go();
+        this.$.ajaxActivity.go();
+        this.$.ajaxTubes.go();
+      }
+    });
+
+    PolymerExpressions.prototype.momentTZ = function (ISODateStr) {
+      try {
+        var isoValid = new Date(ISODateStr).toISOString();
+        return moment(isoValid).tz("America/Chicago").format("ddd, M/D/YY, h:mm:ssa z");
+      } catch (e) {
+        return "unknown";
+      }
+    };
+    
+    PolymerExpressions.prototype.isImage = function (url) {
+      try {
+        if(url.match(/^.*\.(jpg|png|gif|svg).*$/)) { return true; }
+        else {return false;}
+      } catch(e) {
+        return false;
+      }
+    };
+    
+    PolymerExpressions.prototype.isOnline = function (array, onlineProperty) {
+      if (!Array.isArray(array)) {
+        return array;
+      }
+      if(typeof onlineProperty !== 'string') {
+        return array;
+      }      
+       
+      var ind = 0;
+      var iter = 0;
+            
+      while(iter < array.length) {
+        if(typeof array[ind][onlineProperty] === 'boolean') {
+          if(!array[ind][onlineProperty]) {
+            var temp = array[ind];
+            array.splice(ind, 1);
+            array.push(temp);
+          }
+          else {
+            ind++;
+          }          
+          iter++;
+        }
+        else {
+          iter++;
+        }        
+      }
+      return array;
+    };
+
+  </script>
+
+</polymer-element>
