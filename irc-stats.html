@@ -59,6 +59,13 @@
         width: 40px;
         height: 40px;
       }
+      paper-icon-button.closeIcon {
+        padding: 0px;
+        color: rgb(150,150,150);
+      }
+      paper-icon-button.closeIcon:hover {
+        color: rgb(0,0,0);
+      }
       .card {
         margin: 20px;
         padding: 10px;
@@ -88,7 +95,7 @@
         text-decoration: none;
       }
       .link a:visited {
-        color: rgb(169,169,169);
+        color: rgb(150,150,150);
       }
       .link a:hover {
         color: rgb(105,186,105);
@@ -140,16 +147,20 @@
       }
       .title {
         text-align: center;
+        margin-top: 0px;
       }
+      
     </style>
     <core-ajax id="ajaxUsers" url="{{JSONURI}}users/" handleas="json" auto on-core-response="{{handleAjaxUsers}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxLinks" url="{{JSONURI}}links/" handleas="json" auto on-core-response="{{handleAjaxLinks}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxActivity" url="{{JSONURI}}activity/" handleas="json" auto on-core-response="{{handleAjaxActivity}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxTubes" url="{{JSONURI}}tubes/" handleas="json" auto on-core-response="{{handleAjaxTubes}}" method="GET" hidden></core-ajax>
+    <core-ajax id="ajaxAuth" url="{{JSONURI}}auth/" handleas="json" on-core-response="{{handleAjaxAuth}}" method="POST" hidden></core-ajax>
     <div layout vertical fit>
       <core-toolbar justify="center">
         <span id="title" flex>IRC Stats: {{IRCchannel}}</span>
-        <paper-icon-button icon="refresh" class="bigIcon" on-tap="{{updateData}}"></paper-icon-button>
+        <!--<paper-icon-button icon="refresh" class="bigIcon" on-tap="{{updateData}}"></paper-icon-button>-->
+        <paper-icon-button icon="account-box" class="bigIcon" on-tap="{{loginAuth}}"></paper-icon-button>
         <div class="bottom fit">
           <paper-tabs id="paperTabs" selected="0" selectedindex="0">
             <paper-tab active><core-icon icon="account-circle"></core-icon>&nbspUsers&nbsp</paper-tab>
@@ -189,6 +200,11 @@
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{link in data.links}}">
                   <div class="card">
+                    <template if="{{token != ''}}">
+                      <div relative flex layout horizontal center end-justified>
+                        <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
+                      </div>
+                    </template>
                     <template if="{{!isImage(link.url)}}">
                       <div relative flex layout vertical center center-justified class="link">
                         <a relative href="{{link.url}}" target="_blank">
@@ -207,13 +223,6 @@
                           <div class="description">{{link.og.description}}</div>
                         </template>
                       </div>
-                      <!--<div relative flex layout horizontal center center-justified class="link">
-                        <core-icon icon="bookmark-outline"></core-icon>
-                        <a href="{{link.url}}" target="_blank">
-                          <h1>{{link.url}}</h1>
-                          <paper-ripple fit></paper-ripple>
-                        </a>
-                      </div>-->
                     </template>
                     <template if="{{isImage(link.url)}}">
                       <div relative flex layout vertical center center-justified class="link">
@@ -262,6 +271,9 @@
                       <template if="{{((act.event == 'nick') || (act.event == 'joined'))}}">
                         <core-icon class="{{act.event}}" icon="arrow-forward"></core-icon>
                       </template>
+                      <template if="{{token != ''}}">
+                        <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
+                      </template>
                     </div>
                     <paper-shadow></paper-shadow>
                   </div>
@@ -275,6 +287,11 @@
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{link in data.tubes}}">
                   <div class="card">
+                    <template if="{{token != ''}}">
+                      <div relative flex layout horizontal center end-justified>
+                        <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
+                      </div>
+                    </template>
                     <div flex layout horizontal center-justified>
                       <iframe width="420" height="315" src="//www.youtube.com/embed/{{link.id}}" frameborder="0" allowfullscreen></iframe>
                     </div>
@@ -304,6 +321,8 @@
         //data received, pre-validation
         this.dataPre = { users : [], links : [], activity : [], tubes : []
         };
+        
+        this.token = "";
 
        //load moment timezone data
        moment.tz.add('America/Chicago|CST CDT EST CWT CPT|60 50 50 50 50|01010101010101010101010101010101010102010101010103401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010|-261s0 1nX0 11B0 1nX0 1wp0 TX0 WN0 1qL0 1cN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 11B0 1Hz0 14p0 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 RB0 8x30 iw0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 s10 1Vz0 LB0 1BX0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0');
@@ -361,12 +380,22 @@
       handleAjaxTubes: function(response) {
         this.dataPre.tubes = response.detail.response;
       },
+      
+      handleAjaxAuth: function(response) {
+        this.token = response.detail.response;
+        console.log(this.token);
+      },
 
       updateData: function() {
         this.$.ajaxUsers.go();
         this.$.ajaxLinks.go();
         this.$.ajaxActivity.go();
         this.$.ajaxTubes.go();
+      },
+
+      loginAuth: function() {
+        this.$.ajaxAuth.params = '{"user":"herp", "pass":"derpington"}';
+        this.$.ajaxAuth.go();
       }
     });
 
@@ -421,3 +450,4 @@
   </script>
 
 </polymer-element>
+
