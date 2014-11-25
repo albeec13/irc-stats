@@ -8,11 +8,13 @@
 <link rel="import" href="//cdn.thecact.us/bower_components/core-pages/core-pages.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/core-animated-pages/core-animated-pages.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/core-animated-pages/transitions/cross-fade.html">
+<link rel="import" href="//cdn.thecact.us/bower_components/core-overlay/core-overlay.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-tabs/paper-tabs.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-tabs/paper-tab.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-shadow/paper-shadow.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-ripple/paper-ripple.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="//cdn.thecact.us/bower_components/paper-button/paper-button.html">
 <script src="//cdn.thecact.us/bower_components/moment/min/moment.min.js"></script>
 <script src="//cdn.thecact.us/bower_components/moment-timezone/builds/moment-timezone.min.js"></script>
 
@@ -149,26 +151,61 @@
         text-align: center;
         margin-top: 0px;
       }
-      
+      #userName, #password {
+        border: 0px solid;
+        border-bottom: 1px solid rgb(105,186,105);
+        outline: none;
+        margin: 15px;
+      }
+      #userName:focus, #password:focus {
+        border: 0px solid;
+        border-bottom: 2px solid rgb(48,153,48);
+        outline: none;
+        margin: 15px;
+      }
     </style>
     <core-ajax id="ajaxUsers" url="{{JSONURI}}users/" handleas="json" auto on-core-response="{{handleAjaxUsers}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxLinks" url="{{JSONURI}}links/" handleas="json" auto on-core-response="{{handleAjaxLinks}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxActivity" url="{{JSONURI}}activity/" handleas="json" auto on-core-response="{{handleAjaxActivity}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxTubes" url="{{JSONURI}}tubes/" handleas="json" auto on-core-response="{{handleAjaxTubes}}" method="GET" hidden></core-ajax>
-    <core-ajax id="ajaxAuth" url="{{JSONURI}}auth/" handleas="json" on-core-response="{{handleAjaxAuth}}" method="POST" hidden></core-ajax>
+    <core-ajax id="ajaxAuth" url="{{JSONURI}}auth/" handleas="json" contentType="application/json" on-core-response="{{handleAjaxAuth}}" method="POST" hidden></core-ajax>
+    <core-overlay id="loginDialog" backdrop>
+      <paper-shadow class="card" z="2">
+        <template if="{{token == ''}}">
+          <h1 class="title">Login</h1>
+          <input is="core-input" id="userName" placeholder="user name" maxlength="30" autofocus value="{{auth.user}}"><br>
+          <input is="core-input" id="password" type="password" placeholder="password" maxlength="30" value="{{auth.pass}}"><br>
+          <div id="loginError" hidden>Invalid user name or password.</div>
+          <div layout horizontal center-justified>
+            <paper-button core-overlay-toggle>Cancel</paper-button>
+            <div flex></div>
+            <paper-button on-tap={{loginAuth}}>Submit</paper-button>
+          </div>
+        </template>
+        <template if="{{token != '' }}">
+          <h1 class="title">Log Out</h1>
+          <div layout horizontal center-justified>
+            <paper-button core-overlay-toggle>Cancel</paper-button>
+            <div flex></div>
+            <paper-button on-tap={{loginDeAuth}}>Log Out</paper-button>
+          </div>
+        </template>
+      </paper-shadow>
+    </core-overlay>
     <div layout vertical fit>
       <core-toolbar justify="center">
         <span id="title" flex>IRC Stats: {{IRCchannel}}</span>
         <!--<paper-icon-button icon="refresh" class="bigIcon" on-tap="{{updateData}}"></paper-icon-button>-->
-        <paper-icon-button icon="account-box" class="bigIcon" on-tap="{{loginAuth}}"></paper-icon-button>
+        <paper-icon-button icon="account-box" class="bigIcon" on-tap="{{toggleLoginDialog}}"></paper-icon-button>
         <div class="bottom fit">
-          <paper-tabs id="paperTabs" selected="0" selectedindex="0">
-            <paper-tab active><core-icon icon="account-circle"></core-icon>&nbspUsers&nbsp</paper-tab>
-            <paper-tab><core-icon icon="bookmark-outline"></core-icon>&nbspLinks&nbsp</paper-tab>
-            <paper-tab><core-icon icon="swap-horiz"></core-icon>&nbspActivity&nbsp</paper-tab>
-            <paper-tab><core-icon icon="theaters"></core-icon>&nbspTubes&nbsp</paper-tab>
-          </paper-tabs>
-          <paper-shadow></paper-shadow>
+          <paper-shadow>
+            <paper-tabs id="paperTabs" selected="0" selectedindex="0">
+              <paper-tab active><core-icon icon="account-circle"></core-icon>&nbspUsers&nbsp</paper-tab>
+              <paper-tab><core-icon icon="bookmark-outline"></core-icon>&nbspLinks&nbsp</paper-tab>
+              <paper-tab><core-icon icon="swap-horiz"></core-icon>&nbspActivity&nbsp</paper-tab>
+              <paper-tab><core-icon icon="theaters"></core-icon>&nbspTubes&nbsp</paper-tab>
+            </paper-tabs>
+          </paper-shadow>
         </div>
       </core-toolbar>
       <div flex layout vertical>
@@ -177,7 +214,7 @@
             <core-header-panel mode="seamed" cross-fade flex>
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{user in data.users  | isOnline('online')}}">
-                  <div class="card">
+                  <paper-shadow class="card">
                     <div flex layout horizontal center center-justified>
                       <core-tooltip position="top" label="{{user.online ? 'online' : 'offline'}}">
                         <core-icon icon="account-circle" class="{{user.online ? 'online' : 'offline'}}"></core-icon>
@@ -189,8 +226,7 @@
                       <div class="hMargins"><b>Links:</b> {{user.links}}</div>
                     </div><br>
                     <div flex layout horizontal center-justified><b> Last Login:</b><em> {{user.lastLogin | momentTZ}}</em></div>
-                    <paper-shadow></paper-shadow>
-                  </div>
+                  </paper-shadow>
                 </template>
               </div>              
             </core-header-panel>
@@ -199,7 +235,7 @@
             <core-header-panel mode="seamed" cross-fade flex>
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{link in data.links}}">
-                  <div class="card">
+                  <paper-shadow class="card">
                     <template if="{{token != ''}}">
                       <div relative flex layout horizontal center end-justified>
                         <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
@@ -239,8 +275,7 @@
                         <core-icon icon="schedule" class="time"></core-icon>
                       </core-tooltip>
                     </div>
-                    <paper-shadow></paper-shadow>
-                  </div>
+                  </paper-shadow>
                 </template>
               </div>   
             </core-header-panel>
@@ -249,7 +284,7 @@
             <core-header-panel mode="seamed" cross-fade flex>
               <div flex>
                 <template repeat="{{act in data.activity}}">
-                  <div class="card {{act.event}}bg">
+                  <paper-shadow class="card {{act.event}}bg">
                     <div flex layout horizontal center>
                       <template if="{{((act.event == 'nick') || (act.event == 'quit') || (act.event == 'kicked') || (act.event == 'killed') || (act.event == 'parted'))}}">
                         <core-icon class="{{act.event}}" icon="arrow-back"></core-icon>
@@ -275,8 +310,7 @@
                         <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
                       </template>
                     </div>
-                    <paper-shadow></paper-shadow>
-                  </div>
+                  </paper-shadow>
                 </template>
               </div>   
             </core-header-panel>
@@ -286,7 +320,7 @@
             <core-header-panel mode="seamed" cross-fade flex>
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{link in data.tubes}}">
-                  <div class="card">
+                  <paper-shadow class="card">
                     <template if="{{token != ''}}">
                       <div relative flex layout horizontal center end-justified>
                         <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
@@ -299,8 +333,7 @@
                       <div><b>Linked by:</b> {{link.user}}</div>
                     </div><br>
                     <div flex layout horizontal center-justified><em>{{link.time | momentTZ}}</em></div>
-                    <paper-shadow></paper-shadow>
-                  </div>
+                  </paper-shadow>
                 </template>
               </div>
             </core-header-panel>
@@ -323,6 +356,8 @@
         };
         
         this.token = "";
+
+        this.auth = {user: '', pass: ''};
 
        //load moment timezone data
        moment.tz.add('America/Chicago|CST CDT EST CWT CPT|60 50 50 50 50|01010101010101010101010101010101010102010101010103401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010|-261s0 1nX0 11B0 1nX0 1wp0 TX0 WN0 1qL0 1cN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 11B0 1Hz0 14p0 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 RB0 8x30 iw0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 s10 1Vz0 LB0 1BX0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0');
@@ -393,9 +428,29 @@
         this.$.ajaxTubes.go();
       },
 
+      toggleLoginDialog: function() {
+        this.$.loginDialog.toggle();
+      },
+
       loginAuth: function() {
-        this.$.ajaxAuth.params = '{"user":"herp", "pass":"derpington"}';
-        this.$.ajaxAuth.go();
+        console.log(this.auth.user);
+        console.log(this.auth.pass);
+        if(this.auth.user && this.auth.pass) {
+          var params = JSON.stringify({"user" : this.auth.user, "pass" : this.auth.pass});
+          this.$.ajaxAuth.body = params;
+          this.$.ajaxAuth.go();
+          this.toggleLoginDialog();
+          this.auth.pass = "";
+          this.$.loginError.hidden = true;
+        }
+        else {
+          this.$.loginError.hidden = false;
+        }
+      },
+
+      loginDeAuth: function() {
+        this.toggleLoginDialog();
+        this.token = "";
       }
     });
 
