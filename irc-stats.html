@@ -15,6 +15,7 @@
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-ripple/paper-ripple.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-icon-button/paper-icon-button.html">
 <link rel="import" href="//cdn.thecact.us/bower_components/paper-button/paper-button.html">
+<link rel="import" href="//cdn.thecact.us/bower_components/paper-toggle-button/paper-toggle-button.html">
 <script src="//cdn.thecact.us/bower_components/moment/min/moment.min.js"></script>
 <script src="//cdn.thecact.us/bower_components/moment-timezone/builds/moment-timezone.min.js"></script>
 
@@ -163,6 +164,15 @@
         outline: none;
         margin: 15px;
       }
+      .toggle {
+        margin: 10px;
+      }
+      paper-toggle-button.toggleBtn::shadow #toggleBar[checked] {
+        background-color: rgb(48,153,48);
+      }
+      paper-toggle-button.toggleBtn::shadow paper-radio-button::shadow #onRadio {
+        background-color: rgb(255,255,134);
+      }
     </style>
     <core-ajax id="ajaxUsers" url="{{JSONURI}}users/" handleas="json" auto on-core-response="{{handleAjaxUsers}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxLinks" url="{{JSONURI}}links/" handleas="json" auto on-core-response="{{handleAjaxLinks}}" method="GET" hidden></core-ajax>
@@ -179,7 +189,7 @@
           <div layout horizontal center-justified>
             <paper-button core-overlay-toggle>Cancel</paper-button>
             <div flex></div>
-            <paper-button on-tap={{loginAuth}}>Submit</paper-button>
+            <paper-button on-tap="{{loginAuth}}">Submit</paper-button>
           </div>
         </template>
         <template if="{{token != '' }}">
@@ -187,19 +197,19 @@
           <div layout horizontal center-justified>
             <paper-button core-overlay-toggle>Cancel</paper-button>
             <div flex></div>
-            <paper-button on-tap={{loginDeAuth}}>Log Out</paper-button>
+            <paper-button on-tap="{{loginDeAuth}}">Log Out</paper-button>
           </div>
         </template>
       </paper-shadow>
     </core-overlay>
     <div layout vertical fit>
-      <core-toolbar justify="center">
+      <core-toolbar justify="center" class="medium-tall">
         <span id="title" flex>IRC Stats: {{IRCchannel}}</span>
-        <!--<paper-icon-button icon="refresh" class="bigIcon" on-tap="{{updateData}}"></paper-icon-button>-->
+        <paper-icon-button icon="refresh" class="bigIcon" on-tap="{{updateData}}"></paper-icon-button>
         <paper-icon-button icon="account-box" class="bigIcon" on-tap="{{toggleLoginDialog}}"></paper-icon-button>
         <div class="bottom fit">
           <paper-shadow>
-            <paper-tabs id="paperTabs" selected="0" selectedindex="0">
+            <paper-tabs id="paperTabs" selected="{{currTab}}">
               <paper-tab active><core-icon icon="account-circle"></core-icon>&nbspUsers&nbsp</paper-tab>
               <paper-tab><core-icon icon="bookmark-outline"></core-icon>&nbspLinks&nbsp</paper-tab>
               <paper-tab><core-icon icon="swap-horiz"></core-icon>&nbspActivity&nbsp</paper-tab>
@@ -208,12 +218,16 @@
           </paper-shadow>
         </div>
       </core-toolbar>
+      <div class="toggle" layout horizontal center-justified>
+        <div>Auto-load on scroll&nbsp</div>
+        <paper-toggle-button class="toggleBtn" checked="{{autoLoad}}" on-core-change="{{toggleAutoLoad}}"></paper-toggle-button>
+      </div>
       <div flex layout vertical>
         <core-animated-pages flex selected="{{$.paperTabs.selected}}" transitions="cross-fade">
           <section flex layout vertical>
-            <core-header-panel mode="seamed" cross-fade flex>
+            <core-header-panel mode="seamed" cross-fade flex id="usersPanel" on-scroll="{{ scrollHandler }}">
               <div flex layout horizontal wrap center-justified>
-                <template repeat="{{user in data.users  | isOnline('online')}}">
+                <template repeat="{{user in data.users  | isOnline('online') | limitTo(data.usersLoaded)}}">
                   <paper-shadow class="card">
                     <div flex layout horizontal center center-justified>
                       <core-tooltip position="top" label="{{user.online ? 'online' : 'offline'}}">
@@ -228,13 +242,16 @@
                     <div flex layout horizontal center-justified><b> Last Login:</b><em> {{user.lastLogin | momentTZ}}</em></div>
                   </paper-shadow>
                 </template>
+              </div> 
+              <div layout vertical center>
+                <paper-button on-tap="{{ loadMore }}">Load More</paper-button>
               </div>              
             </core-header-panel>
           </section>
           <section flex layout vertical>
-            <core-header-panel mode="seamed" cross-fade flex>
+            <core-header-panel mode="seamed" cross-fade flex id="linksPanel" on-scroll="{{ scrollHandler }}">
               <div flex layout horizontal wrap center-justified>
-                <template repeat="{{link in data.links}}">
+                <template repeat="{{link in data.links | limitTo(data.linksLoaded)}}">
                   <paper-shadow class="card">
                     <template if="{{token != ''}}">
                       <div relative flex layout horizontal center end-justified>
@@ -278,12 +295,15 @@
                   </paper-shadow>
                 </template>
               </div>   
+              <div layout vertical center>
+                <paper-button on-tap="{{ loadMore }}">Load More</paper-button>
+              </div>
             </core-header-panel>
           </section>
           <section flex layout vertical>
-            <core-header-panel mode="seamed" cross-fade flex>
+            <core-header-panel mode="seamed" cross-fade flex id="activityPanel" on-scroll="{{ scrollHandler }}">
               <div flex>
-                <template repeat="{{act in data.activity}}">
+                <template repeat="{{act in data.activity | limitTo(data.activityLoaded)}}">
                   <paper-shadow class="card {{act.event}}bg">
                     <div flex layout horizontal center>
                       <template if="{{((act.event == 'nick') || (act.event == 'quit') || (act.event == 'kicked') || (act.event == 'killed') || (act.event == 'parted'))}}">
@@ -312,14 +332,17 @@
                     </div>
                   </paper-shadow>
                 </template>
-              </div>   
+              </div>
+              <div layout vertical center>
+                <paper-button on-tap="{{ loadMore }}">Load More</paper-button>
+              </div>              
             </core-header-panel>
           </section>
           </section>
           <section flex layout vertical>
-            <core-header-panel mode="seamed" cross-fade flex>
+            <core-header-panel mode="seamed" cross-fade flex id="tubesPanel" on-scroll="{{ scrollHandler }}">
               <div flex layout horizontal wrap center-justified>
-                <template repeat="{{link in data.tubes}}">
+                <template repeat="{{link in data.tubes | limitTo(data.tubesLoaded)}}">
                   <paper-shadow class="card">
                     <template if="{{token != ''}}">
                       <div relative flex layout horizontal center end-justified>
@@ -336,6 +359,9 @@
                   </paper-shadow>
                 </template>
               </div>
+              <div layout vertical center>
+                <paper-button on-tap="{{ loadMore }}">Load More</paper-button>
+              </div>
             </core-header-panel>
           </section>
         </core-animated-pages>
@@ -348,19 +374,34 @@
     Polymer('irc-stats', {
       created: function() {
         //data that's been validated, bound to element
-        this.data = { users : [], links : [], activity : [], tubes : []
-        };
+        this.data = { users : [], links : [], activity : [], tubes : [], 
+                            usersHead : "", usersTail : "", linksHead : "", linksTail : "",
+                            activityHead : "", activityTail : "", tubesHead : "", tubesTail : "",
+                            usersLoaded : 0, linksLoaded : 0, activityLoaded : 0, tubesLoaded : 0};
 
         //data received, pre-validation
-        this.dataPre = { users : [], links : [], activity : [], tubes : []
-        };
+        this.dataPre = { users : [], links : [], activity : [], tubes : [] };
         
+        //session token
         this.token = "";
+        
+        //current tab
+        this.currTab = "";
+        this.currTabName = "";
 
+        //user authentication data (pass is cleared after submission so it's not persistent in browser-side JS)
         this.auth = {user: '', pass: ''};
 
-       //load moment timezone data
-       moment.tz.add('America/Chicago|CST CDT EST CWT CPT|60 50 50 50 50|01010101010101010101010101010101010102010101010103401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010|-261s0 1nX0 11B0 1nX0 1wp0 TX0 WN0 1qL0 1cN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 11B0 1Hz0 14p0 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 RB0 8x30 iw0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 s10 1Vz0 LB0 1BX0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0');
+        //toggle value for auto-loading of more content
+        this.autoLoad = false;
+
+        //load moment timezone data
+        moment.tz.add('America/Chicago|CST CDT EST CWT CPT|60 50 50 50 50|01010101010101010101010101010101010102010101010103401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010|-261s0 1nX0 11B0 1nX0 1wp0 TX0 WN0 1qL0 1cN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 11B0 1Hz0 14p0 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 RB0 8x30 iw0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 WL0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1cN0 1cL0 1cN0 1cL0 s10 1Vz0 LB0 1BX0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 1cN0 1fz0 1a10 1fz0 1cN0 1cL0 1cN0 1cL0 1cN0 1cL0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 14p0 1lb0 14p0 1lb0 14p0 1nX0 11B0 1nX0 11B0 1nX0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Rd0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0 Op0 1zb0');
+      },
+      
+      ready: function() {
+        //change tab to force observe on currTab to fire on initial load
+        this.currTab = 0;
       },
       
       observe: {
@@ -368,6 +409,7 @@
         'dataPre.links': 'validateLinks',
         'dataPre.activity': 'validateActivity',
         'dataPre.tubes': 'validateTubes',
+        'currTab': 'initCards',
       },
 
       JSONURI: 'missingURI',
@@ -378,8 +420,14 @@
       validate: function(oldData, newData, arrayName) {
         if(newData !== null) {
           if(JSON.stringify(newData) !== JSON.stringify(this.data)) {
-            this.data[arrayName] = this.dataPre[arrayName];
+            this.data[arrayName] = this.dataPre[arrayName].slice(0);
+            
+            if(this.data[arrayName + "Head"] == "") {
+              this.data[arrayName + "Head"] = this.dataPre[arrayName][0]._id;
+            }            
+            this.data[arrayName + "Tail"] = this.dataPre[arrayName][this.dataPre[arrayName].length -1]._id;
           }
+          console.log(this.data[arrayName + "Head"] + " to " + this.data[arrayName + "Tail"] );
         }
         else {console.log("data was null");}
       },
@@ -418,7 +466,6 @@
       
       handleAjaxAuth: function(response) {
         this.token = response.detail.response;
-        console.log(this.token);
       },
 
       updateData: function() {
@@ -426,6 +473,12 @@
         this.$.ajaxLinks.go();
         this.$.ajaxActivity.go();
         this.$.ajaxTubes.go();
+      },
+
+      toggleAutoLoad: function() {
+        if(this.autoLoad) {
+          this.loadMore();
+        }
       },
 
       toggleLoginDialog: function() {
@@ -451,6 +504,55 @@
       loginDeAuth: function() {
         this.toggleLoginDialog();
         this.token = "";
+      },
+      
+      initCards: function() {
+        var count = 0;
+        switch (this.currTab) {
+          case 0:
+            this.currTabName = "users";
+            count = 10;
+            break;
+          case 1:
+            this.currTabName = "links";
+            count = 6;
+            break;
+          case 2:
+            this.currTabName = "activity";
+            count = 15;
+            break;
+          case 3:
+            this.currTabName = "tubes";
+            count = 4;
+            break;
+          default:
+            break;
+        };
+        if(this.data[this.currTabName + "Loaded"] === 0) {
+          this.data[this.currTabName + "Loaded"] += count;
+        }
+      },
+      
+      loadMore: function() {
+        this.scrollUpdate(this.currTabName);
+      },
+      
+      scrollUpdate: function(target) {
+        this.data[target + "Loaded"] += 5;
+        if(this.data[target + "Loaded"] > this.data[target].length) {
+          this.data[target + "Loaded"] = this.data[target].length;
+        }
+      },
+      
+      scrollHandler: function(e) {
+        if(this.autoLoad) {
+          var scroller = e.detail.target;
+          if(scroller.scrollTop > 0) {
+            if(scroller.scrollHeight - scroller.scrollTop <= scroller.clientHeight) {
+              this.scrollUpdate(e.target.id.split("Panel")[0]);
+            }
+          }
+        }
       }
     });
 
@@ -500,6 +602,44 @@
         }        
       }
       return array;
+    };
+    
+    PolymerExpressions.prototype.limitTo = function (input, limit) {
+      if (!Array.isArray(input) && typeof input !== 'string') return input;
+
+      limit = parseInt(limit, 10);
+
+      if (typeof input === 'string') {
+        //NaN check on limit
+        if (limit) {
+          return limit >= 0 ? input.slice(0, limit) : input.slice(limit, input.length);
+        } else {
+          return "";
+        }
+      }
+
+      var out = [],
+          i, n;
+
+      // if abs(limit) exceeds maximum length, trim it
+      if (limit > input.length)
+        limit = input.length;
+      else if (limit < -input.length)
+        limit = -input.length;
+
+      if (limit > 0) {
+        i = 0;
+        n = limit;
+      } else {
+        i = input.length + limit;
+        n = input.length;
+      }
+
+      for (; i<n; i++) {
+        out.push(input[i]);
+      }
+
+      return out;
     };
 
   </script>
