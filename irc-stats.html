@@ -77,18 +77,24 @@
         word-wrap: break-word;
         word-break: break-word;
         height: 100%;
-        -webkit-animation: cardFade 1.5s;
-        animation: cardFade 1.5s;
       }
-      @-webkit-keyframes cardFade {
+      .fadeIn {
+        -webkit-animation: cardFadeIn 1.5s;
+        -moz-animation: cardFadeIn 1.5s;
+        animation: cardFadeIn 1.5s;
+        -webkit-animation-fill-mode:forwards;
+        -moz-animation-fill-mode:forwards;
+        animation-fill-mode:forwards;
+      }
+      @-webkit-keyframes cardFadeIn {
         from {opacity: 0;}
         to {opacity: 1.0;}
       }
-      @-moz-keyframes cardFade {
+      @-moz-keyframes cardFadeIn {
         from {opacity: 0;}
         to {opacity: 1.0;}
       }
-      @keyframes cardFade {
+      @keyframes cardFadeIn {
         from {opacity: 0;}
         to {opacity: 1.0;}
       }
@@ -201,6 +207,7 @@
     <core-ajax id="ajaxActivity" url="{{JSONURI}}activity/" handleas="json" auto on-core-response="{{handleAjaxActivity}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxTubes" url="{{JSONURI}}tubes/" handleas="json" auto on-core-response="{{handleAjaxTubes}}" method="GET" hidden></core-ajax>
     <core-ajax id="ajaxAuth" url="{{JSONURI}}auth/" handleas="json" contentType="application/json" on-core-response="{{handleAjaxAuth}}" method="POST" hidden></core-ajax>
+    <core-ajax id="ajaxRem" url="" handleas="json" contentType="application/json" on-core-response="{{handleAjaxRem}}" method="DELETE" hidden></core-ajax>
     <core-overlay id="loginDialog" backdrop>
       <paper-shadow class="card" z="2">
         <template if="{{token == ''}}">
@@ -252,7 +259,12 @@
             <core-header-panel mode="seamed" cross-fade flex id="usersPanel" on-scroll="{{ scrollHandler }}">
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{user in data.users  | isOnline('online') | limitTo(data.usersLoaded)}}">
-                  <paper-shadow class="card">
+                  <paper-shadow class="card fadeIn">
+                    <template if="{{token != ''}}">
+                      <div relative flex layout horizontal center end-justified>
+                        <paper-icon-button data-id="{{user._id}}" data-parentpanel="usersPanel" class="closeIcon" icon="close" role="button" tabindex="0" on-tap="{{removeItem}}"></paper-icon-button>
+                      </div>
+                    </template>
                     <div flex layout horizontal center center-justified>
                       <core-tooltip position="top" label="{{user.online ? 'online' : 'offline'}}">
                         <core-icon icon="account-circle" class="{{user.online ? 'online' : 'offline'}}"></core-icon>
@@ -276,10 +288,10 @@
             <core-header-panel mode="seamed" cross-fade flex id="linksPanel" on-scroll="{{ scrollHandler }}">
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{link in data.links | limitTo(data.linksLoaded)}}">
-                  <paper-shadow class="card">
+                  <paper-shadow class="card fadeIn">
                     <template if="{{token != ''}}">
                       <div relative flex layout horizontal center end-justified>
-                        <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
+                        <paper-icon-button data-id="{{link._id}}" data-parentpanel="linksPanel" class="closeIcon" icon="close" role="button" tabindex="0" on-tap="{{removeItem}}"></paper-icon-button>
                       </div>
                     </template>
                     <template if="{{!isImage(link.url)}}">
@@ -328,7 +340,7 @@
             <core-header-panel mode="seamed" cross-fade flex id="activityPanel" on-scroll="{{ scrollHandler }}">
               <div flex>
                 <template repeat="{{act in data.activity | limitTo(data.activityLoaded)}}">
-                  <paper-shadow class="card {{act.event}}bg">
+                  <paper-shadow class="card fadeIn {{act.event}}bg">
                     <div flex layout horizontal center>
                       <template if="{{((act.event == 'nick') || (act.event == 'quit') || (act.event == 'kicked') || (act.event == 'killed') || (act.event == 'parted'))}}">
                         <core-icon class="{{act.event}}" icon="arrow-back"></core-icon>
@@ -351,7 +363,7 @@
                         <core-icon class="{{act.event}}" icon="arrow-forward"></core-icon>
                       </template>
                       <template if="{{token != ''}}">
-                        <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
+                        <paper-icon-button data-id="{{act._id}}" data-parentpanel="activityPanel" class="closeIcon" icon="close" role="button" tabindex="0" on-tap="{{removeItem}}"></paper-icon-button>
                       </template>
                     </div>
                   </paper-shadow>
@@ -367,10 +379,10 @@
             <core-header-panel mode="seamed" cross-fade flex id="tubesPanel" on-scroll="{{ scrollHandler }}">
               <div flex layout horizontal wrap center-justified>
                 <template repeat="{{link in data.tubes | limitTo(data.tubesLoaded)}}">
-                  <paper-shadow class="card">
+                  <paper-shadow class="card fadeIn">
                     <template if="{{token != ''}}">
                       <div relative flex layout horizontal center end-justified>
-                        <paper-icon-button class="closeIcon" icon="close" role="button" tabindex="0"></paper-icon-button>
+                        <paper-icon-button data-id="{{link._id}}" data-parentpanel="tubesPanel" class="closeIcon" icon="close" role="button" tabindex="0" on-tap="{{removeItem}}"></paper-icon-button>
                       </div>
                     </template>
                     <div flex layout horizontal center-justified>
@@ -446,7 +458,7 @@
         if(newData !== null) {
           if(JSON.stringify(newData) !== JSON.stringify(oldData)) {
             this.data[arrayName] = this.dataPre[arrayName].slice(0);
-            if(this.data[arrayName + "Head"] == "") {
+            if(this.data[arrayName + "Head"] == "none") {
               this.data[arrayName + "Head"] = this.dataPre[arrayName][0]._id;
             }            
             this.data[arrayName + "Tail"] = this.dataPre[arrayName][this.dataPre[arrayName].length -1]._id;
@@ -489,7 +501,27 @@
       },
       
       handleAjaxAuth: function(response) {
-        this.token = response.detail.response;
+        this.token = response.detail.response.token;
+      },
+      
+      handleAjaxRem: function(response) {
+        var res = response.detail.response;
+        
+        if(res.deleted) {
+          var findId = function(array, id) {
+            for(var i = 0; i < array.length; i++) {
+              if(array[i]._id == id)
+                return i;
+            }
+            return(false);
+          }
+          
+          var found = findId(this.dataPre[res.collection], res.id);
+          
+          if(found) {         
+            this.dataPre[res.collection].splice(found, 1);
+          }
+        }
       },
 
       updateData: function() {
@@ -549,6 +581,13 @@
       loginDeAuth: function() {
         this.toggleLoginDialog();
         this.token = "";
+      },
+      
+      removeItem: function(e) {
+        var id = e.path[0].dataset.id;
+        var parentpanel = e.path[0].dataset.parentpanel;
+        this.$.ajaxRem.url = this.JSONURI + "rem/" + parentpanel.split("Panel")[0] + "/" + id + "/" + this.token + "/";
+        this.$.ajaxRem.go();
       },
       
       initCards: function() {
